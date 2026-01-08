@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <title>課表</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
     :root { 
         --blue-main: #4a90e2; 
@@ -13,18 +12,22 @@
         --blue-course-text: #1565c0; 
         --bg: #f8fafc; 
         --text: #2c3e50; 
+        --danger: #ef4444;
+        --print-btn: #0ea5e9;
     }
     
-    body { font-family: sans-serif; background: var(--bg); color: var(--text); padding: 0; margin: 0; }
+    body { font-family: "Noto Sans TC", sans-serif; background: var(--bg); color: var(--text); padding: 0; margin: 0; }
     
     #capture-area {
         width: 100%;
         max-width: 600px; 
-        margin: 10px auto; 
+        margin: 10px auto 100px; 
         padding: 20px; 
         background: white; 
         min-height: 848px;
         box-sizing: border-box;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        position: relative;
     }
 
     /* 可點擊編輯的標題 */
@@ -45,7 +48,32 @@
     table { width: 100%; border-collapse: separate; border-spacing: 2px; table-layout: fixed; }
     th { background: #f1f5f9; color: #64748b; padding: 8px 0; border-radius: 4px; font-size: 0.85rem; }
     
-    .time-col { width: 60px; font-size: 10px; color: #94a3b8; background: #f8fafc; border-radius: 4px; border: 1px solid #e2e8f0; }
+    /* 時段欄位樣式調整 */
+    .time-col { 
+        width: 65px; 
+        font-size: 10px; 
+        color: #64748b; 
+        background: #f8fafc; 
+        border-radius: 4px; 
+        border: 1px solid #e2e8f0; 
+        cursor: pointer; /* 提示可點擊 */
+        position: relative;
+    }
+    .time-col:hover {
+        background: #e2e8f0;
+        color: var(--blue-main);
+        border-color: var(--blue-main);
+    }
+    .time-col::after {
+        content: '✎';
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        font-size: 8px;
+        opacity: 0;
+        transition: 0.2s;
+    }
+    .time-col:hover::after { opacity: 0.5; }
     
     td { border: 1px solid #e2e8f0; border-radius: 4px; height: 55px; text-align: center; font-size: 0.75rem; transition: 0.2s; padding: 2px; overflow: hidden; word-break: break-all; }
     
@@ -62,24 +90,70 @@
         cursor: pointer; 
     }
 
+    .add-row-container {
+        text-align: center;
+        margin-top: 10px;
+        padding: 10px;
+        border: 2px dashed #e2e8f0;
+        border-radius: 8px;
+        cursor: pointer;
+        color: #94a3b8;
+        transition: 0.2s;
+    }
+    .add-row-container:hover {
+        border-color: var(--blue-main);
+        color: var(--blue-main);
+        background: var(--blue-light);
+    }
+
     .floating-bar { 
         position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%); 
         background: rgba(255, 255, 255, 0.95); padding: 8px 15px; border-radius: 30px; 
         box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; gap: 8px; align-items: center; 
-        z-index: 100; border: 1px solid #eee; width: 90%; max-width: 400px; justify-content: space-around;
+        z-index: 100; border: 1px solid #eee; width: 95%; max-width: 420px; justify-content: space-around;
+        flex-wrap: wrap; 
     }
 
-    .btn { border: none; padding: 8px 12px; border-radius: 20px; font-weight: 600; cursor: pointer; font-size: 12px; }
+    .btn { border: none; padding: 8px 12px; border-radius: 20px; font-weight: 600; cursor: pointer; font-size: 12px; white-space: nowrap; margin: 2px; }
     .btn-add { background: var(--blue-main); color: white; }
-    .btn-pdf { background: #ef4444; color: white; }
-    .btn:disabled { opacity: 0.4; }
+    .btn-print { background: var(--danger); color: white; }
+    .btn-reset { background: #64748b; color: white; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
     @media (max-width: 480px) {
-        #capture-area { padding: 10px; }
+        #capture-area { padding: 10px; margin-bottom: 120px; }
         .editable-title { font-size: 1.1rem; }
         .time-col { width: 50px; }
         td { height: 50px; font-size: 0.7rem; }
         th { font-size: 0.75rem; }
+        .floating-bar { padding: 8px 10px; border-radius: 15px; width: 95%; }
+    }
+
+    /* --- 列印專用樣式 --- */
+    @media print {
+        @page { size: A4 portrait; margin: 1cm; }
+        body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        
+        /* 隱藏除了 capture-area 以外的所有內容 */
+        body > *:not(#capture-area) { display: none; }
+        
+        #capture-area { 
+            display: block !important;
+            margin: 0 !important; padding: 0 !important; 
+            box-shadow: none !important; 
+            width: 100% !important; max-width: 100% !important; 
+            min-height: auto !important;
+            border: none !important;
+        }
+
+        .add-row-container { display: none !important; }
+
+        /* 表格顏色 */
+        td.course { background-color: #e3f2fd !important; color: #1565c0 !important; border: 1px solid #90caf9 !important; }
+        th { background-color: #f1f5f9 !important; color: #64748b !important; }
+        
+        /* 隱藏編輯提示 */
+        .time-col::after { display: none; }
     }
 </style>
 </head>
@@ -93,17 +167,23 @@
         </thead>
         <tbody id="tbody"></tbody>
     </table>
+   
+    <div id="add-row-btn" class="add-row-container" onclick="addTimeSlot()">
+        <strong>＋ 新增時段</strong>
+    </div>
 </div>
 
 <div class="floating-bar">
-    <span id="status" style="font-size:11px; color: var(--blue-main); font-weight: bold;">點選格子</span>
+    <span id="status" style="font-size:11px; color: var(--blue-main); font-weight: bold; min-width: 40px; text-align: center;">點選格子</span>
     <button id="add-btn" class="btn btn-add" disabled onclick="addCourse()">排入</button>
     <button class="btn" style="background:#f1f5f9" onclick="clearSelect()">清除</button>
-    <button class="btn btn-pdf" onclick="toPDF()">下載PDF</button>
+    <button class="btn btn-print" onclick="window.print()">下載 PDF / 列印</button>
+    <button class="btn btn-reset" onclick="resetConfig()">重置</button>
 </div>
 
 <script>
-const config = [
+// 預設設定
+const defaultConfig = [
     {id:"第 1 節", t:"08:10-09:00"}, 
     {id:"第 2 節", t:"09:10-10:00"}, 
     {id:"第 3 節", t:"10:10-11:00"}, 
@@ -116,20 +196,28 @@ const config = [
     {id:"第 10 節", t:"17:10-18:00"}
 ];
 
-let data = JSON.parse(localStorage.getItem('timetable_v7_data')) || {};
+// 初始化資料
+let courseData = JSON.parse(localStorage.getItem('timetable_v7_data')) || {};
 let title = localStorage.getItem('timetable_v7_title') || "【 114學年度第2學期 學期課表 】";
+let timeConfig = JSON.parse(localStorage.getItem('timetable_v7_config')) || JSON.parse(JSON.stringify(defaultConfig));
 
 function render() {
     document.getElementById('main-title').innerText = title;
-    const html = config.map((item, r) => {
-        let cells = `<td class="time-col"><strong>${item.id}</strong><br>${item.t}</td>`;
+    
+    const html = timeConfig.map((item, r) => {
+        let cells = `<td class="time-col" onclick="editTimeSlot(${r})"><strong>${item.id}</strong><br><span style="font-size:0.9em">${item.t}</span></td>`;
         for (let c = 1; c <= 5; c++) {
-            const key = `${r}-${c}`, val = data[key];
-            cells += val ? `<td class="course" onclick="delCourse('${key}')"><strong>${val.n}</strong><br>${val.r}</td>` 
-                         : `<td class="selectable" data-key="${key}" onclick="toggle(this)"></td>`;
+            const key = `${r}-${c}`;
+            const val = courseData[key];
+            if (val) {
+                cells += `<td class="course" onclick="delCourse('${key}')"><strong>${val.n}</strong><br>${val.r}</td>`;
+            } else {
+                cells += `<td class="selectable" data-key="${key}" onclick="toggle(this)"></td>`;
+            }
         }
         return `<tr>${cells}</tr>`;
     }).join('');
+    
     document.getElementById('tbody').innerHTML = html;
 }
 
@@ -142,6 +230,58 @@ function editTitle() {
     }
 }
 
+function editTimeSlot(index) {
+    const current = timeConfig[index];
+    const newId = prompt(`編輯時段名稱 (清空並確認可刪除此列)：`, current.id);
+    if (newId === null) return;
+
+    if (newId.trim() === "") {
+        if (confirm(`確定要刪除「${current.id}」這一整列嗎？\n(注意：下方的課程會自動上移)`)) {
+            deleteRow(index);
+        }
+        return;
+    }
+
+    const newTime = prompt(`編輯時間 (例如 09:00-10:00)：`, current.t);
+    if (newTime !== null) {
+        timeConfig[index].id = newId;
+        timeConfig[index].t = newTime;
+        saveConfig();
+    }
+}
+
+function addTimeSlot() {
+    const id = prompt("請輸入新時段名稱：", `第 ${timeConfig.length + 1} 節`);
+    if (!id) return;
+    const time = prompt("請輸入時間：", "00:00-00:00");
+    timeConfig.push({ id: id, t: time || "" });
+    saveConfig();
+}
+
+function deleteRow(indexToDelete) {
+    timeConfig.splice(indexToDelete, 1);
+    let newCourseData = {};
+    Object.keys(courseData).forEach(key => {
+        let [r, c] = key.split('-').map(Number);
+        if (r < indexToDelete) {
+            newCourseData[key] = courseData[key];
+        } else if (r > indexToDelete) {
+            newCourseData[`${r-1}-${c}`] = courseData[key];
+        }
+    });
+    courseData = newCourseData;
+    saveCourseData();
+    saveConfig();
+}
+
+function resetConfig() {
+    if(confirm("確定要重置設定回預設值嗎？")) {
+        timeConfig = JSON.parse(JSON.stringify(defaultConfig));
+        saveConfig();
+    }
+}
+
+function saveConfig() { localStorage.setItem('timetable_v7_config', JSON.stringify(timeConfig)); render(); }
 function toggle(el) { el.classList.toggle('selected'); updateUI(); }
 function updateUI() {
     const sel = document.querySelectorAll('.selected').length;
@@ -149,27 +289,22 @@ function updateUI() {
     document.getElementById('add-btn').disabled = !sel;
 }
 function clearSelect() { document.querySelectorAll('.selected').forEach(e => e.classList.remove('selected')); updateUI(); }
+
 function addCourse() {
     const n = prompt("課程名稱：");
-    const r = prompt("教室地點：");
+    if (n === null) return;
+    const r = prompt("教室地點：") || "";
     if (n) { 
-        document.querySelectorAll('.selected').forEach(e => data[e.dataset.key] = {n, r: r || ""}); 
-        save(); 
+        document.querySelectorAll('.selected').forEach(e => {
+            courseData[e.dataset.key] = {n, r}; 
+            e.classList.remove('selected');
+        });
+        saveCourseData(); 
     }
 }
-function delCourse(k) { if(confirm("確定刪除此課程？")) { delete data[k]; save(); } }
-function save() { localStorage.setItem('timetable_v7_data', JSON.stringify(data)); render(); updateUI(); }
 
-function toPDF() {
-    const opt = { 
-        margin: 5, 
-        filename: title + '.pdf', 
-        image: { type: 'jpeg', quality: 1 },
-        html2canvas: { scale: 2 },
-        jsPDF: { format: 'a4', orientation: 'portrait' } 
-    };
-    html2pdf().set(opt).from(document.getElementById('capture-area')).save();
-}
+function delCourse(k) { if(confirm("確定刪除此課程？")) { delete courseData[k]; saveCourseData(); } }
+function saveCourseData() { localStorage.setItem('timetable_v7_data', JSON.stringify(courseData)); render(); updateUI(); }
 
 render();
 </script>
